@@ -48,6 +48,21 @@ export const builder = (argv: yargs.Argv) =>
       (args) => create(args as any),
     )
     .command(
+      'update <database>',
+      'Update existing database',
+      (yargs) => yargs.options({
+        'new-db-name': {
+          describe: 'New database name',
+          type: 'string',
+        },
+        'new-db-owner': {
+          describe: 'New owner name',
+          type: 'string',
+        },
+      }),
+      (args) => update(args as any),
+    )
+    .command(
       'delete <database>',
       'Delete a database',
       (yargs) => yargs,
@@ -109,6 +124,33 @@ export const create = async (
   writer(props).end(data.database, {
     fields: DATABASE_FIELDS,
   });
+};
+
+export const update = async (props: BranchScopeProps  & { database: string, newDbName?: string, newDbOwner?: string }) => {
+  const { database, newDbName, newDbOwner, projectId } = props;
+  console.log(database, newDbName, newDbOwner);
+
+  const branchId = await branchIdFromProps(props);
+  console.log('doing request ...', projectId, branchId, database);
+  const { data } = await retryOnLock(() =>
+    props.apiClient.updateProjectBranchDatabase(projectId, branchId, database, {
+      database: { name: newDbName, owner_name: newDbOwner },
+    }),
+  );
+};
+
+// todo: remove because superseeded by the upadate command
+export const rename = async (props: BranchScopeProps  & { oldDbName: string, newDbName: string }) => {
+  const { oldDbName, newDbName, projectId } = props;
+  const branchId = await branchIdFromProps(props);
+  console.log(oldDbName, newDbName);
+
+  console.log('doing request ...', projectId, branchId, oldDbName);
+  const { data } = await retryOnLock(() =>
+    props.apiClient.updateProjectBranchDatabase(projectId, branchId, oldDbName, {
+      database: { name: newDbName },
+    }),
+  );
 };
 
 export const deleteDb = async (
